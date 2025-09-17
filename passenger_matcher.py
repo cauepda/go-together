@@ -1,6 +1,7 @@
 import math
 from typing import List, Dict, Optional
 from datetime import datetime
+from mcp_aws_pricing import AWSPricingMCP
 
 class Location:
     def __init__(self, lat: float, lon: float, name: str = ""):
@@ -100,6 +101,7 @@ class PassengerMatcher:
         """Encontra grupos compatíveis de passageiros"""
         groups = []
         used_passengers = set()
+        aws_pricing = AWSPricingMCP()
         
         for i, passenger in enumerate(passengers):
             if passenger.name in used_passengers:
@@ -132,13 +134,18 @@ class PassengerMatcher:
                     avg_solo_cost = sum(solo_costs) / len(solo_costs)
                     savings_per_person = max(0, avg_solo_cost - cost_per_person)
                     
+                    # Calcular custos AWS por grupo
+                    aws_costs = aws_pricing.calculate_cost_per_passenger_group(len(potential_group))
+                    
                     groups.append({
                         'passengers': potential_group,
                         'size': len(potential_group),
                         'total_distance_km': round(group_distance, 2),
                         'cost_per_person': round(cost_per_person, 2),
                         'savings_per_person': round(savings_per_person, 2),
-                        'phones': [p.phone for p in potential_group]
+                        'phones': [p.phone for p in potential_group],
+                        'aws_cost_per_passenger_usd': aws_costs['aws_cost_per_passenger_usd'],
+                        'aws_cost_per_match_usd': aws_costs['aws_cost_per_match_usd']
                     })
                     
                     # Marcar passageiros como usados

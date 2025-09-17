@@ -1,2 +1,45 @@
-/venv
+# Python
+__pycache__/
+*.py[cod]
+*.pyo
+*.pyd
+.Python
+venv/
+env/
+.venv/
+.env
+*.egg-info/
+dist/
+build/
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Logs
+*.log
+logs/
+
+# Temporary files
+*.tmp
+*.temp
+
+# Secrets (manter local)
+.streamlit/secrets.toml
+
+# Arquivos não essenciais
+streamlit_app_old.py
 q-dev-chat-2025-09-17.md
+go-together-api-v2*.pdf
+
+# Cache
+.pytest_cache/
+.coverage
+.mypy_cache/
