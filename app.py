@@ -15,6 +15,10 @@ FIXED_DESTINATION = {"lat": -23.508386086677678, "lon": -46.66748112547857, "nam
 # Session state
 if 'formed_groups' not in st.session_state:
     st.session_state.formed_groups = []
+if 'pending_invites' not in st.session_state:
+    st.session_state.pending_invites = []
+if 'sent_invites' not in st.session_state:
+    st.session_state.sent_invites = []
 
 def call_api(method, endpoint, data=None):
     """Chama a API Lambda"""
@@ -161,7 +165,7 @@ with st.sidebar:
             st.error("Preencha nome e celular!")
 
 # Tabs
-tab1, tab2, tab3 = st.tabs(["🔍 Encontrar Parceiros", "👥 Grupos Formados", "📋 Pessoas Cadastradas"])
+tab1, tab2, tab3, tab4 = st.tabs(["🔍 Encontrar Parceiros", "📨 Convites", "👥 Grupos Formados", "📋 Pessoas Cadastradas"])
 
 with tab1:
     st.header("Encontrar Parceiros de Viagem")
@@ -192,15 +196,26 @@ with tab1:
                                 st.write(f"**Distância:** {match['distance_km']} km")
                             
                             with col2:
-                                if st.button(f"💚 Conectar", key=f"connect_{match['name']}"):
-                                    group = {
-                                        'members': [selected_user, match['name']],
-                                        'phones': [current_user_data['phone'], match['phone']],
-                                        'origins': [current_user_data['origin']['name'], match['origin']['name']],
+                                # Verificar se já enviou convite
+                                invite_key = f"{selected_user}-{match['name']}"
+                                already_sent = any(inv['key'] == invite_key for inv in st.session_state.sent_invites)
+                                
+                                if already_sent:
+                                    st.info("📨 Convite enviado")
+                                elif st.button(f"📨 Enviar Convite", key=f"invite_{match['name']}"):
+                                    invite = {
+                                        'key': invite_key,
+                                        'from_user': selected_user,
+                                        'to_user': match['name'],
+                                        'from_phone': current_user_data['phone'],
+                                        'to_phone': match['phone'],
+                                        'from_origin': current_user_data['origin']['name'],
+                                        'to_origin': match['origin']['name'],
                                         'distance_km': match['distance_km']
                                     }
-                                    st.session_state.formed_groups.append(group)
-                                    st.success("Conexão feita! Verifique a aba 'Grupos Formados'")
+                                    st.session_state.pending_invites.append(invite)
+                                    st.session_state.sent_invites.append(invite)
+                                    st.success("📨 Convite enviado! Aguarde a resposta.")
                                     st.rerun()
                 else:
                     st.info("Nenhuma pessoa compatível encontrada.")
@@ -208,6 +223,73 @@ with tab1:
         st.info("Cadastre-se primeiro para encontrar parceiros!")
 
 with tab2:
+    st.header("📨 Convites")
+    
+    passengers = get_passengers()
+    if passengers:
+        user_names = [p['name'] for p in passengers]
+        selected_user_invites = st.selectbox("Ver convites para:", user_names, key="invite_user")
+        
+        if selected_user_invites:
+            # Convites recebidos
+            received_invites = [inv for inv in st.session_state.pending_invites if inv['to_user'] == selected_user_invites]
+            
+            if received_invites:
+                st.subheader("📨 Convites Recebidos")
+                for invite in received_invites:
+                    with st.expander(f"Convite de {invite['from_user']} - {invite['distance_km']} km"):
+                        st.write(f"**De:** {invite['from_user']} ({invite['from_phone']})")
+                        st.write(f"**Origem dele:** {invite['from_origin']}")
+                        st.write(f"**Sua origem:** {invite['to_origin']}")
+                        st.write(f"**Distância:** {invite['distance_km']} km")
+                        
+                        col1, col2 = st.columns(2)
+                        with col1:
+                            if st.button(f"✅ Aceitar", key=f"accept_{invite['key']}"):
+                                # Criar grupo
+                                group = {
+                                    'members': [invite['from_user'], invite['to_user']],
+                                    'phones': [invite['from_phone'], invite['to_phone']],
+                                    'origins': [invite['from_origin'], invite['to_origin']],
+                                    'distance_km': invite['distance_km']
+                                }
+                                st.session_state.formed_groups.append(group)
+                                
+                                # Remover convite
+                                st.session_state.pending_invites = [inv for inv in st.session_state.pending_invites if inv['key'] != invite['key']]
+                                st.session_state.sent_invites = [inv for inv in st.session_state.sent_invites if inv['key'] != invite['key']]
+                                
+                                st.success("✅ Convite aceito! Grupo formado.")
+                                st.rerun()
+                        
+                        with col2:
+                            if st.button(f"❌ Recusar", key=f"reject_{invite['key']}"):
+                                # Remover convite
+                                st.session_state.pending_invites = [inv for inv in st.session_state.pending_invites if inv['key'] != invite['key']]
+                                st.session_state.sent_invites = [inv for inv in st.session_state.sent_invites if inv['key'] != invite['key']]
+                                
+                                st.success("❌ Convite recusado.")
+                                st.rerun()
+            
+            # Convites enviados
+            sent_invites = [inv for inv in st.session_state.sent_invites if inv['from_user'] == selected_user_invites]
+            
+            if sent_invites:
+                st.subheader("📤 Convites Enviados")
+                for invite in sent_invites:
+                    with st.expander(f"Para {invite['to_user']} - Aguardando resposta"):
+                        st.write(f"**Para:** {invite['to_user']} ({invite['to_phone']})")
+                        st.write(f"**Origem dele:** {invite['to_origin']}")
+                        st.write(f"**Sua origem:** {invite['from_origin']}")
+                        st.write(f"**Distância:** {invite['distance_km']} km")
+                        st.info("⏳ Aguardando resposta...")
+            
+            if not received_invites and not sent_invites:
+                st.info("Nenhum convite pendente.")
+    else:
+        st.info("Cadastre-se primeiro para ver convites!")
+
+with tab3:
     st.header("Grupos Formados")
     
     if st.session_state.formed_groups:
@@ -224,7 +306,7 @@ with tab2:
     else:
         st.info("Nenhum grupo formado ainda.")
 
-with tab3:
+with tab4:
     st.header("Pessoas Cadastradas")
     
     passengers = get_passengers()
