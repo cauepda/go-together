@@ -28,6 +28,8 @@ def call_api(method, endpoint, data=None):
             response = requests.get(url)
         elif method == "POST":
             response = requests.post(url, json=data)
+        elif method == "PUT":
+            response = requests.put(url, json=data)
         elif method == "DELETE":
             response = requests.delete(url)
         
@@ -61,6 +63,32 @@ def find_matches(passenger_data):
     data = {"passenger": passenger_data}
     result = call_api("POST", "/find-matches", data)
     return result.get("matches", []) if result else []
+
+def get_invites():
+    """Busca convites da API"""
+    return call_api("GET", "/invites") or []
+
+def send_invite(from_user, to_user, from_phone, to_phone, from_origin, to_origin, distance_km):
+    """Envia convite via API"""
+    data = {
+        "from_user": from_user,
+        "to_user": to_user,
+        "from_phone": from_phone,
+        "to_phone": to_phone,
+        "from_origin": from_origin,
+        "to_origin": to_origin,
+        "distance_km": distance_km
+    }
+    return call_api("POST", "/invites", data)
+
+def update_invite(invite_key, status):
+    """Atualiza status do convite via API"""
+    data = {"status": status}
+    return call_api("PUT", f"/invites/{invite_key}", data)
+
+def get_groups():
+    """Busca grupos da API"""
+    return call_api("GET", "/groups") or []
 
 # Interface
 st.title("🚗 Go Together")
@@ -197,26 +225,25 @@ with tab1:
                             
                             with col2:
                                 # Verificar se já enviou convite
+                                invites = get_invites()
                                 invite_key = f"{selected_user}-{match['name']}"
-                                already_sent = any(inv['key'] == invite_key for inv in st.session_state.sent_invites)
+                                already_sent = any(inv.get('key') == invite_key for inv in invites)
                                 
                                 if already_sent:
                                     st.info("📨 Convite enviado")
                                 elif st.button(f"📨 Enviar Convite", key=f"invite_{match['name']}"):
-                                    invite = {
-                                        'key': invite_key,
-                                        'from_user': selected_user,
-                                        'to_user': match['name'],
-                                        'from_phone': current_user_data['phone'],
-                                        'to_phone': match['phone'],
-                                        'from_origin': current_user_data['origin']['name'],
-                                        'to_origin': match['origin']['name'],
-                                        'distance_km': match['distance_km']
-                                    }
-                                    st.session_state.pending_invites.append(invite)
-                                    st.session_state.sent_invites.append(invite)
-                                    st.success("📨 Convite enviado! Aguarde a resposta.")
-                                    st.rerun()
+                                    result = send_invite(
+                                        selected_user,
+                                        match['name'],
+                                        current_user_data['phone'],
+                                        match['phone'],
+                                        current_user_data['origin']['name'],
+                                        match['origin']['name'],
+                                        match['distance_km']
+                                    )
+                                    if result:
+                                        st.success("📨 Convite enviado! Aguarde a resposta.")
+                                        st.rerun()
                 else:
                     st.info("Nenhuma pessoa compatível encontrada.")
     else:
@@ -231,8 +258,10 @@ with tab2:
         selected_user_invites = st.selectbox("Ver convites para:", user_names, key="invite_user")
         
         if selected_user_invites:
+            invites = get_invites()
+            
             # Convites recebidos
-            received_invites = [inv for inv in st.session_state.pending_invites if inv['to_user'] == selected_user_invites]
+            received_invites = [inv for inv in invites if inv['to_user'] == selected_user_invites]
             
             if received_invites:
                 st.subheader("📨 Convites Recebidos")
@@ -246,33 +275,20 @@ with tab2:
                         col1, col2 = st.columns(2)
                         with col1:
                             if st.button(f"✅ Aceitar", key=f"accept_{invite['key']}"):
-                                # Criar grupo
-                                group = {
-                                    'members': [invite['from_user'], invite['to_user']],
-                                    'phones': [invite['from_phone'], invite['to_phone']],
-                                    'origins': [invite['from_origin'], invite['to_origin']],
-                                    'distance_km': invite['distance_km']
-                                }
-                                st.session_state.formed_groups.append(group)
-                                
-                                # Remover convite
-                                st.session_state.pending_invites = [inv for inv in st.session_state.pending_invites if inv['key'] != invite['key']]
-                                st.session_state.sent_invites = [inv for inv in st.session_state.sent_invites if inv['key'] != invite['key']]
-                                
-                                st.success("✅ Convite aceito! Grupo formado.")
-                                st.rerun()
+                                result = update_invite(invite['key'], 'accepted')
+                                if result:
+                                    st.success("✅ Convite aceito! Grupo formado.")
+                                    st.rerun()
                         
                         with col2:
                             if st.button(f"❌ Recusar", key=f"reject_{invite['key']}"):
-                                # Remover convite
-                                st.session_state.pending_invites = [inv for inv in st.session_state.pending_invites if inv['key'] != invite['key']]
-                                st.session_state.sent_invites = [inv for inv in st.session_state.sent_invites if inv['key'] != invite['key']]
-                                
-                                st.success("❌ Convite recusado.")
-                                st.rerun()
+                                result = update_invite(invite['key'], 'rejected')
+                                if result:
+                                    st.success("❌ Convite recusado.")
+                                    st.rerun()
             
             # Convites enviados
-            sent_invites = [inv for inv in st.session_state.sent_invites if inv['from_user'] == selected_user_invites]
+            sent_invites = [inv for inv in invites if inv['from_user'] == selected_user_invites]
             
             if sent_invites:
                 st.subheader("📤 Convites Enviados")
@@ -292,17 +308,15 @@ with tab2:
 with tab3:
     st.header("Grupos Formados")
     
-    if st.session_state.formed_groups:
-        for i, group in enumerate(st.session_state.formed_groups, 1):
-            with st.expander(f"Grupo {i} - {', '.join(group['members'])}"):
+    groups = get_groups()
+    
+    if groups:
+        for group in groups:
+            with st.expander(f"Grupo {group['id']} - {', '.join(group['members'])}"):
                 st.write(f"**Membros:** {', '.join(group['members'])}")
                 st.write(f"**Origens:** {', '.join(group['origins'])}")
                 st.write(f"**Contatos:** {', '.join(group['phones'])}")
                 st.write(f"**Distância:** {group['distance_km']} km")
-                
-                if st.button(f"🗑️ Remover Grupo {i}", key=f"remove_group_{i}"):
-                    st.session_state.formed_groups.pop(i-1)
-                    st.rerun()
     else:
         st.info("Nenhum grupo formado ainda.")
 
