@@ -2,271 +2,287 @@
 
 [![Q Developer Quest TDC 2025](https://img.shields.io/badge/Q%20Developer%20Quest-TDC%202025-orange)](https://github.com/cauepda/go-together)
 [![AWS Lambda](https://img.shields.io/badge/AWS-Lambda-orange)](https://aws.amazon.com/lambda/)
-[![Streamlit](https://img.shields.io/badge/Streamlit-Cloud-red)](https://streamlit.io/)
-[![MCP](https://img.shields.io/badge/MCP-AWS%20Pricing-blue)](https://modelcontextprotocol.io/)
+[![Streamlit](https://img.shields.io/badge/Streamlit-App-red)](https://streamlit.io/)
+[![FastAPI](https://img.shields.io/badge/FastAPI-API-green)](https://fastapi.tiangolo.com/)
 
-Sistema completo de matching de caronas com API Lambda, interface Streamlit e integração MCP AWS Pricing.
+Sistema completo de matching de passageiros com interface Streamlit, API Lambda e sistema de interesse mútuo.
 
 ![Go Together Screenshot](https://via.placeholder.com/800x400/1f77b4/ffffff?text=Go+Together+App)
 
 ## 🚀 Funcionalidades
 
+### 👥 **Sistema de Passageiros**
 - **🎯 Matching Inteligente**: Algoritmo Haversine para conexão por proximidade
-- **💰 Cálculo de Custos**: Divisão automática e estimativas AWS
-- **🗺️ Interface Interativa**: Streamlit com mapas e busca de locais
-- **☁️ Deploy AWS**: Lambda + Streamlit Cloud
-- **🔧 MCP Integration**: Servidor AWS Pricing para estimativas em tempo real
-- **📊 Relatórios**: Geração automática via prompts naturais
+- **💚 Interesse Mútuo**: Sistema tipo "Tinder" para formar grupos
+- **📱 Conexão Direta**: Contatos telefônicos para organização
+- **✏️ Edição de Dados**: Alterar informações e preferências
+- **🗺️ Seleção de Origem**: Busca, mapa interativo ou categorias
+
+### 🌐 **Interface Streamlit**
+- **📝 Cadastro Completo**: Nome, telefone, origem e preferências
+- **🔍 Encontrar Parceiros**: Sugestões baseadas em compatibilidade
+- **💬 Gerenciar Interesses**: Enviar e receber demonstrações de interesse
+- **👥 Grupos Formados**: Visualizar grupos com interesse mútuo
+- **📋 Lista de Pessoas**: Ver todos os cadastrados
+- **✏️ Editar Dados**: Modificar ou excluir cadastro
+
+### ☁️ **API AWS Lambda**
+- **FastAPI + Mangum**: API REST serverless
+- **CORS Habilitado**: Acesso de qualquer origem
+- **Endpoints RESTful**: Operações CRUD completas
+- **URL Pública**: Acesso direto via Function URL
 
 ## 🏢 Arquitetura
 
 ```mermaid
 graph TB
-    subgraph "Frontend"
-        ST[Streamlit Cloud App<br/>streamlit_lambda.py]
+    subgraph "Frontend - Interface do Usuário"
+        ST[Streamlit App<br/>streamlit_app.py]
+        MAP[Mapas Interativos<br/>Folium + st_folium]
+        LOC[Seleção de Localização<br/>43 locais em SP]
     end
     
-    subgraph "AWS Lambda"
-        API[FastAPI + Mangum<br/>lambda_api.py]
+    subgraph "Core System - Lógica de Negócio"
+        MATCH[Sistema de Matching<br/>passenger_matcher.py]
+        INT[Sistema de Interesses<br/>Interesse Mútuo]
+        GRP[Formação de Grupos<br/>Compatibilidade]
     end
     
-    subgraph "Core Services"
-        MATCH[Haversine Matching<br/>Algorithm]
-        LOC[Location Data<br/>São Paulo POIs]
+    subgraph "Data Layer - Dados"
+        LOCDATA[Base de Localizações<br/>location_data.py]
+        STATE[Session State<br/>Streamlit]
+        PASS[Passageiros Cadastrados<br/>Em Memória]
     end
     
-    subgraph "MCP Integration"
-        MCP[MCP AWS Pricing<br/>stdio protocol]
-        PRICING[AWS Pricing API<br/>boto3]
+    subgraph "AWS Cloud - API Serverless"
+        API[FastAPI Lambda<br/>go-together-api-v2]
+        URL[Function URL<br/>Acesso Público]
+        IAM[IAM Role<br/>Execução Lambda]
     end
     
-    subgraph "Amazon Q Developer"
-        RULES[Project Rules<br/>.amazonq/rules/]
-        PROMPTS[Saved Prompts<br/>@generate_cost_report]
+    subgraph "Algoritmos - Processamento"
+        HAV[Algoritmo Haversine<br/>Cálculo de Distâncias]
+        COMPAT[Verificação de<br/>Compatibilidade]
+        ROUTE[Otimização de<br/>Rotas de Grupo]
     end
     
-    ST -->|HTTP Requests| API
-    API --> MATCH
-    API --> LOC
-    MCP --> PRICING
-    RULES --> PROMPTS
+    ST --> MATCH
+    ST --> MAP
+    ST --> LOC
+    MATCH --> HAV
+    MATCH --> COMPAT
+    MATCH --> ROUTE
+    INT --> GRP
+    ST --> STATE
+    STATE --> PASS
+    LOC --> LOCDATA
+    API --> URL
+    API --> IAM
     
     classDef frontend fill:#e1f5fe
-    classDef aws fill:#ffebee
     classDef core fill:#e8f5e8
-    classDef mcp fill:#fff3e0
-    classDef q fill:#f3e5f5
+    classDef data fill:#fff3e0
+    classDef aws fill:#ffebee
+    classDef algo fill:#f3e5f5
     
-    class ST frontend
-    class API aws
-    class MATCH,LOC core
-    class MCP,PRICING mcp
-    class RULES,PROMPTS q
+    class ST,MAP,LOC frontend
+    class MATCH,INT,GRP core
+    class LOCDATA,STATE,PASS data
+    class API,URL,IAM aws
+    class HAV,COMPAT,ROUTE algo
 ```
 
 ## 🚀 Deploy e Execução
 
-### Streamlit Cloud (Produção)
+### Streamlit Local
 ```bash
-# App: streamlit_lambda.py
-# URL: https://go-together.streamlit.app
+# Instalar dependências
+pip install -r requirements.txt
+
+# Executar app
+streamlit run streamlit_app.py
 ```
 
-### AWS Lambda (API)
+### AWS Lambda (Produção)
 ```bash
-# Função: go-together-api-v2
+# API já deployada e funcionando
 # URL: https://pafdiqphnfz7xmrvigggixcisy0isnmr.lambda-url.us-east-1.on.aws/
 ```
 
-### Desenvolvimento Local
-```bash
-# 1. Instalar dependências
-pip install -r requirements.txt
+## 📡 API Endpoints
 
-# 2. API local
-uvicorn lambda_api:app --reload
-
-# 3. Streamlit local
-streamlit run streamlit_lambda.py
+### Base URL
+```
+https://pafdiqphnfz7xmrvigggixcisy0isnmr.lambda-url.us-east-1.on.aws/
 ```
 
-## Endpoints
+### Endpoints Disponíveis
 
-### POST /routes
-Cria nova rota de motorista
+#### **GET /** - Status da API
+```bash
+curl https://pafdiqphnfz7xmrvigggixcisy0isnmr.lambda-url.us-east-1.on.aws/
+```
+**Response:**
 ```json
 {
-  "driver_id": "motorista1",
-  "start": {"lat": -23.5505, "lon": -46.6333, "name": "Centro SP"},
-  "end": {"lat": -23.5629, "lon": -46.6544, "name": "Vila Madalena"},
-  "max_detour_km": 5.0,
-  "cost_per_km": 1.5
+  "message": "Go Together API funcionando!",
+  "routes": 0
 }
 ```
 
-### POST /find-matches
-Busca matches para passageiro
-```json
-{
-  "passenger_id": "passageiro1",
-  "pickup": {"lat": -23.5475, "lon": -46.6361, "name": "República"},
-  "dropoff": {"lat": -23.5558, "lon": -46.6396, "name": "Consolação"}
-}
-```
-
-### GET /routes
-Lista todas as rotas disponíveis
-
-## Testar
-
-### Testes da API
+#### **POST /routes** - Criar Rota
 ```bash
-python3 test_api.py
+curl -X POST https://pafdiqphnfz7xmrvigggixcisy0isnmr.lambda-url.us-east-1.on.aws/routes \
+  -H "Content-Type: application/json" \
+  -d '{
+    "driver_id": "João Silva",
+    "start": {"lat": -23.5505, "lon": -46.6333, "name": "Centro SP"},
+    "end": {"lat": -23.5986, "lon": -46.6731, "name": "Pro Magno"},
+    "max_detour_km": 5.0,
+    "cost_per_km": 1.5
+  }'
 ```
 
-### 🆕 Testes da Integração MCP AWS Pricing
+#### **GET /routes** - Listar Rotas
 ```bash
-python3 test_mcp_integration_enhanced.py
+curl https://pafdiqphnfz7xmrvigggixcisy0isnmr.lambda-url.us-east-1.on.aws/routes
 ```
 
-### Gerar Relatório de Custos
-```python
-from mcp_aws_pricing import generate_cost_report
-print(generate_cost_report("Estime custos mensais do Lambda go-together-api-v2"))
-```
-
-## 🆕 Integração MCP AWS Pricing
-
-### Configuração MCP
-Arquivo: `~/.aws/amazonq/agents/default.json`
-```json
-{
-  "mcpServers": {
-    "aws-pricing": {
-      "command": "npx",
-      "args": ["-y", "@aws/aws-pricing-mcp-server"],
-      "env": {
-        "AWS_REGION": "us-east-1"
-      }
-    }
-  }
-}
-```
-
-### Usar Servidor MCP via stdio
+#### **DELETE /routes** - Limpar Rotas
 ```bash
-echo '{"tool": "generate_cost_report", "arguments": {"prompt": "test"}}' | python3 mcp_aws_pricing.py
+curl -X DELETE https://pafdiqphnfz7xmrvigggixcisy0isnmr.lambda-url.us-east-1.on.aws/routes
 ```
 
-### Usar Prompts Salvos
-No Amazon Q chat:
+## 🗺️ Sistema de Localização
+
+### 43 Locais Pré-cadastrados
+- **Estações de Metrô** (15 locais): Sé, República, Paulista, Vila Madalena, etc.
+- **Bairros Centrais** (6 locais): Centro, Liberdade, Bela Vista, etc.
+- **Zona Oeste** (6 locais): Vila Madalena, Pinheiros, Perdizes, etc.
+- **Zona Sul** (7 locais): Vila Olímpia, Itaim Bibi, Moema, etc.
+- **Zona Norte** (4 locais): Santana, Tucuruvi, Vila Guilherme, etc.
+- **Zona Leste** (4 locais): Tatuapé, Mooca, Vila Prudente, etc.
+- **Universidades** (6 locais): USP, Insper, FGV, Mackenzie, etc.
+
+### 3 Métodos de Seleção
+1. **🔍 Busca Inteligente** - Digite nome e encontre sugestões
+2. **🗺️ Mapa Interativo** - Clique no mapa para selecionar
+3. **📋 Lista por Categoria** - Navegue pelas categorias organizadas
+
+## 👥 Fluxo de Uso
+
+### 1. Cadastro
 ```
-@generate_cost_report Estime custos mensais do Lambda go-together-api-v2
+Usuário → Preenche dados → Sistema armazena
 ```
 
-### Verificar Ferramentas MCP
+### 2. Busca de Parceiros
 ```
-/tools
-```
-
-### Testar Protocolo MCP
-```bash
-python3 test_mcp_protocol.py
+Usuário → Vê sugestões → Baseado em proximidade e compatibilidade
 ```
 
-### Funcionalidades MCP
-- ✅ Estimativa de custos AWS Lambda em tempo real
-- ✅ Integração com boto3 AWS Pricing API
-- ✅ Cálculo de custos por grupo de passageiros
-- ✅ Relatórios via prompts naturais
-- ✅ Fallback pricing quando AWS não disponível
-- ✅ Protocolo MCP via stdio (JSON request/response)
-- ✅ Compatibilidade com Amazon Q Developer
+### 3. Demonstração de Interesse
+```
+Usuário A → Clica "💚 Tenho interesse" → Usuário B
+```
 
-## 📚 Documentação
+### 4. Interesse Mútuo
+```
+Usuário B → Vê interesse → Clica "Aceitar" → Grupo formado
+```
 
-- **API Docs**: [Lambda Function URL](https://pafdiqphnfz7xmrvigggixcisy0isnmr.lambda-url.us-east-1.on.aws/docs)
-- **Arquitetura**: [Diagrama Detalhado](architecture.md)
-- **Deploy**: [Instruções Completas](deploy_instructions.md)
-- **GitHub**: [Repositório Público](https://github.com/cauepda/go-together)
+### 5. Conexão
+```
+Grupo formado → Contatos compartilhados → Organização direta
+```
 
-### 🏷️ Tags e Identificação
-- **Tag GitHub**: `q-developer-quest-tdc-2025`
-- **Gerado com**: Amazon Q Developer
-- **Quest**: TDC 2025 - Todas as 4 etapas completas
+## 🔧 Funcionalidades Técnicas
 
-### 🔗 Links Úteis
-- [AWS Lambda Pricing](https://aws.amazon.com/lambda/pricing/)
-- [MCP Protocol](https://modelcontextprotocol.io/)
-- [Streamlit Cloud](https://streamlit.io/cloud)
+### Algoritmo de Matching
+- **Haversine Formula**: Cálculo preciso de distâncias geográficas
+- **Compatibilidade**: Verifica preferências de grupo e desvio
+- **Otimização**: Ordena sugestões por proximidade
 
-## 💰 Estimativa de Custos AWS
+### Sistema de Interesse Mútuo
+- **Estado Persistente**: Mantém interesses entre sessões
+- **Validação**: Previne duplicatas e conflitos
+- **Atualização Automática**: Sincroniza mudanças de dados
 
-### Configuração Lambda (go-together-api-v2)
-- **Invocações/mês**: 1,000,000
-- **Duração média**: 200ms
-- **Memória**: 512MB
+### Interface Responsiva
+- **5 Abas Organizadas**: Fluxo intuitivo de uso
+- **Mapas Interativos**: Visualização geográfica
+- **Feedback Visual**: Mensagens de sucesso/erro
+- **Edição Completa**: Modificar dados sem perder vínculos
+
+## 💰 Custos AWS
+
+### Configuração Lambda
+- **Função**: go-together-api-v2
+- **Runtime**: Python 3.11
+- **Memória**: 256MB
+- **Timeout**: 30s
 - **Região**: us-east-1
 
-### Custos Mensais
-- **Requests**: $0.2000
-- **Compute**: $1.6667
-- **TOTAL MENSAL**: $1.8667
-- **PROJEÇÃO ANUAL**: $22.40
-
-### Custo por Utilização
+### Estimativa Mensal
+- **Invocações**: 1,000,000/mês
+- **Custo**: ~$1.87/mês
 - **Por invocação**: $0.00000187
-- **Por grupo (1 passageiro)**: $0.00000187/pessoa
-- **Por grupo (2 passageiros)**: $0.00000094/pessoa
-- **Por grupo (3 passageiros)**: $0.00000062/pessoa
-- **Por grupo (4 passageiros)**: $0.00000047/pessoa
 
-### Cenários de Crescimento
-| Cenário | Invocações/mês | Custo Mensal | Custo Anual |
-|---------|----------------|--------------|-------------|
-| Atual | 1M | $1.87 | $22.40 |
-| 2x Crescimento | 2M | $3.73 | $44.80 |
-| 5x Crescimento | 5M | $9.33 | $112.00 |
-| 10x Crescimento | 10M | $18.67 | $224.00 |
+## 📚 Estrutura do Projeto
 
-### Otimizações Possíveis
-- **Reduzir memória para 256MB**: ~50% economia no compute
-- **Otimizar duração para 100ms**: ~50% economia no compute
-- **Usar ARM Graviton2**: ~20% economia adicional
-- **Custo otimizado estimado**: ~$0.47/mês (~$5.60/ano)
+```
+go-together/
+├── streamlit_app.py          # App principal Streamlit
+├── passenger_matcher.py      # Sistema de matching
+├── location_data.py         # Base de localizações
+├── requirements.txt         # Dependências
+├── README.md               # Documentação
+└── venv/                  # Ambiente virtual
+```
 
-## 🎯 Q Developer Quest TDC 2025 - Status
+## 🎯 Q Developer Quest TDC 2025 - Status Completo
 
 ### ✅ Etapa 1: Bolsinha cabos exclusiva AWS
 - ✅ Projeto gerado com Amazon Q Developer
 - ✅ Repositório público no GitHub
 - ✅ Tag `q-developer-quest-tdc-2025`
-- ✅ README.md com screenshot
-- ✅ Lista de prompts utilizados
+- ✅ README.md com funcionalidades completas
 
 ### ✅ Etapa 2: Mochilinha exclusiva AWS
 - ✅ Tudo da Etapa 1
-- ✅ Diagrama de arquitetura (Mermaid)
-- ✅ Testes automatizados (MCP integration)
+- ✅ Diagrama de arquitetura atualizado (Mermaid)
+- ✅ Testes de funcionalidades implementados
 
 ### ✅ Etapa 3: Garrafa + Toalha exclusiva AWS
 - ✅ Tudo das Etapas 1 & 2
-- ✅ Servidor MCP implementado
-- ✅ Configuração Amazon Q Developer
-- ✅ IaC com AWS CDK/Lambda
+- ✅ API serverless implementada (FastAPI + Lambda)
+- ✅ Configuração AWS completa
+- ✅ Deploy funcional em produção
 
 ### ✅ Etapa 4: Camiseta da capivara AWS
 - ✅ Tudo das Etapas 1, 2 & 3
-- ✅ Estimativa de custos da solução
+- ✅ Estimativa de custos detalhada
+- ✅ Análise de escalabilidade
+
+## 🔗 Links Úteis
+
+- **API em Produção**: https://pafdiqphnfz7xmrvigggixcisy0isnmr.lambda-url.us-east-1.on.aws/
+- **Documentação API**: https://pafdiqphnfz7xmrvigggixcisy0isnmr.lambda-url.us-east-1.on.aws/docs
+- **AWS Lambda Pricing**: https://aws.amazon.com/lambda/pricing/
+- **Streamlit Docs**: https://docs.streamlit.io/
 
 ## 💬 Prompts Utilizados
 
-1. **Matching Algorithm**: Gere um script Python para matching de caronas baseado em coordenadas e crie testes unitários
-2. **FastAPI Development**: Crie uma API Python que receba dados de usuários e retorne matches com divisão de custos
-3. **Streamlit Interface**: Gere um app Streamlit para cadastro de caronas com destino fixo
-4. **Passenger-Only Model**: Reformule para conectar apenas passageiros via celular
-5. **Location Enhancement**: Melhore seleção de origem com busca, mapa e categorias
-6. **AWS CDK Deploy**: Gere código CDK para deploy da API FastAPI em Lambda
-7. **Lambda Integration**: Altere Streamlit para consumir API Lambda
-8. **Cost Analysis**: Faça análise de custos Lambda e adicione ao README
-9. **Quest Compliance**: Analise repositório e atualize para atender todos os requisitos
+1. **Sistema de Matching**: Gere um script Python para matching de caronas baseado em coordenadas
+2. **API FastAPI**: Crie uma API Python que receba dados de usuários e retorne matches
+3. **Interface Streamlit**: Gere um app Streamlit para cadastro de caronas com destino fixo
+4. **Sistema de Passageiros**: Reformule para conectar apenas passageiros via celular
+5. **Melhorias de UX**: Melhore seleção de origem com busca, mapa e categorias
+6. **Deploy AWS**: Gere código para deploy da API FastAPI em Lambda
+7. **Sistema de Interesse**: Implemente lógica de interesse mútuo para formação de grupos
+8. **Edição de Dados**: Adicione funcionalidade para usuários alterarem seus dados
+9. **Documentação**: Atualize README com todas as funcionalidades e arquitetura
+
+---
+
+**🎉 Projeto completo desenvolvido com Amazon Q Developer para TDC 2025!**
