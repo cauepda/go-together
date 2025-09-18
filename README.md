@@ -26,58 +26,65 @@ Sistema completo de matching de passageiros com interface Streamlit, API Lambda 
 - **📋 Lista de Pessoas**: Ver todos os cadastrados
 - **✏️ Editar Dados**: Modificar ou excluir cadastro
 
-### ☁️ **API AWS Lambda**
-- **FastAPI + Mangum**: API REST serverless
+### ☁️ **API AWS Lambda (Opcional)**
+- **FastAPI + Mangum**: API REST serverless para integrações
 - **CORS Habilitado**: Acesso de qualquer origem
-- **Endpoints RESTful**: Operações CRUD completas
-- **URL Pública**: Acesso direto via Function URL
+- **Endpoints de Passageiros**: CRUD para integrações externas
+- **Function URL**: Acesso direto sem API Gateway
 
 ## 🏢 Arquitetura
 
 ```mermaid
 graph TB
-    subgraph "Frontend - Interface do Usuário"
+    subgraph "Frontend - Interface Streamlit"
         ST[Streamlit App<br/>streamlit_app.py]
+        TABS[5 Abas Principais<br/>Encontrar/Interesses/Grupos/Lista/Editar]
         MAP[Mapas Interativos<br/>Folium + st_folium]
-        LOC[Seleção de Localização<br/>43 locais em SP]
+        LOC[Seleção de Localização<br/>Busca/Mapa/Categoria]
     end
     
-    subgraph "Core System - Lógica de Negócio"
+    subgraph "Core System - Lógica Local"
         MATCH[Sistema de Matching<br/>passenger_matcher.py]
         INT[Sistema de Interesses<br/>Interesse Mútuo]
-        GRP[Formação de Grupos<br/>Compatibilidade]
+        EDIT[Edição de Dados<br/>Atualização/Exclusão]
     end
     
-    subgraph "Data Layer - Dados"
-        LOCDATA[Base de Localizações<br/>location_data.py]
-        STATE[Session State<br/>Streamlit]
-        PASS[Passageiros Cadastrados<br/>Em Memória]
+    subgraph "Data Layer - Armazenamento Local"
+        LOCDATA[Base de Localizações<br/>location_data.py - 43 locais]
+        STATE[Session State<br/>Streamlit - Em Memória]
+        PASS[Passageiros<br/>Lista em Session State]
+        GROUPS[Grupos Formados<br/>Lista em Session State]
+        INTERESTS[Interesses<br/>Dict em Session State]
     end
     
-    subgraph "AWS Cloud - API Serverless"
-        API[FastAPI Lambda<br/>go-together-api-v2]
+    subgraph "AWS Cloud - API Opcional"
+        LAMBDA[Lambda Function<br/>go-together-api-v2]
         URL[Function URL<br/>Acesso Público]
-        IAM[IAM Role<br/>Execução Lambda]
+        HANDLER[Handler<br/>FastAPI + Mangum]
     end
     
     subgraph "Algoritmos - Processamento"
         HAV[Algoritmo Haversine<br/>Cálculo de Distâncias]
         COMPAT[Verificação de<br/>Compatibilidade]
-        ROUTE[Otimização de<br/>Rotas de Grupo]
+        MUTUAL[Interesse Mútuo<br/>Formação de Grupos]
     end
     
-    ST --> MATCH
+    ST --> TABS
     ST --> MAP
     ST --> LOC
+    TABS --> MATCH
+    TABS --> INT
+    TABS --> EDIT
     MATCH --> HAV
     MATCH --> COMPAT
-    MATCH --> ROUTE
-    INT --> GRP
+    INT --> MUTUAL
     ST --> STATE
     STATE --> PASS
+    STATE --> GROUPS
+    STATE --> INTERESTS
     LOC --> LOCDATA
-    API --> URL
-    API --> IAM
+    LAMBDA --> URL
+    LAMBDA --> HANDLER
     
     classDef frontend fill:#e1f5fe
     classDef core fill:#e8f5e8
@@ -85,11 +92,11 @@ graph TB
     classDef aws fill:#ffebee
     classDef algo fill:#f3e5f5
     
-    class ST,MAP,LOC frontend
-    class MATCH,INT,GRP core
-    class LOCDATA,STATE,PASS data
-    class API,URL,IAM aws
-    class HAV,COMPAT,ROUTE algo
+    class ST,TABS,MAP,LOC frontend
+    class MATCH,INT,EDIT core
+    class LOCDATA,STATE,PASS,GROUPS,INTERESTS data
+    class LAMBDA,URL,HANDLER aws
+    class HAV,COMPAT,MUTUAL algo
 ```
 
 ## 🚀 Deploy e Execução
@@ -126,31 +133,53 @@ curl https://pafdiqphnfz7xmrvigggixcisy0isnmr.lambda-url.us-east-1.on.aws/
 ```json
 {
   "message": "Go Together API funcionando!",
-  "routes": 0
+  "passengers": 0
 }
 ```
 
-#### **POST /routes** - Criar Rota
+#### **POST /passengers** - Cadastrar Passageiro
 ```bash
-curl -X POST https://pafdiqphnfz7xmrvigggixcisy0isnmr.lambda-url.us-east-1.on.aws/routes \
+curl -X POST https://pafdiqphnfz7xmrvigggixcisy0isnmr.lambda-url.us-east-1.on.aws/passengers \
   -H "Content-Type: application/json" \
   -d '{
-    "driver_id": "João Silva",
-    "start": {"lat": -23.5505, "lon": -46.6333, "name": "Centro SP"},
-    "end": {"lat": -23.5986, "lon": -46.6731, "name": "Pro Magno"},
-    "max_detour_km": 5.0,
-    "cost_per_km": 1.5
+    "name": "João Silva",
+    "phone": "(11) 99999-9999",
+    "origin": {"lat": -23.5505, "lon": -46.6333, "name": "Centro SP"},
+    "destination": {"lat": -23.5986, "lon": -46.6731, "name": "Pro Magno"},
+    "max_group_size": 4,
+    "max_detour_km": 3.0
   }'
 ```
 
-#### **GET /routes** - Listar Rotas
+#### **GET /passengers** - Listar Passageiros
 ```bash
-curl https://pafdiqphnfz7xmrvigggixcisy0isnmr.lambda-url.us-east-1.on.aws/routes
+curl https://pafdiqphnfz7xmrvigggixcisy0isnmr.lambda-url.us-east-1.on.aws/passengers
 ```
 
-#### **DELETE /routes** - Limpar Rotas
+#### **POST /find-matches** - Encontrar Matches
 ```bash
-curl -X DELETE https://pafdiqphnfz7xmrvigggixcisy0isnmr.lambda-url.us-east-1.on.aws/routes
+curl -X POST https://pafdiqphnfz7xmrvigggixcisy0isnmr.lambda-url.us-east-1.on.aws/find-matches \
+  -H "Content-Type: application/json" \
+  -d '{
+    "passenger": {
+      "name": "Maria Santos",
+      "phone": "(11) 88888-8888",
+      "origin": {"lat": -23.5475, "lon": -46.6361, "name": "República"},
+      "destination": {"lat": -23.5986, "lon": -46.6731, "name": "Pro Magno"},
+      "max_group_size": 4,
+      "max_detour_km": 3.0
+    }
+  }'
+```
+
+#### **DELETE /passengers** - Limpar Todos os Passageiros
+```bash
+curl -X DELETE https://pafdiqphnfz7xmrvigggixcisy0isnmr.lambda-url.us-east-1.on.aws/passengers
+```
+
+#### **DELETE /passengers/{name}** - Remover Passageiro Específico
+```bash
+curl -X DELETE https://pafdiqphnfz7xmrvigggixcisy0isnmr.lambda-url.us-east-1.on.aws/passengers/João%20Silva
 ```
 
 ## 🗺️ Sistema de Localização
@@ -209,10 +238,11 @@ Grupo formado → Contatos compartilhados → Organização direta
 - **Atualização Automática**: Sincroniza mudanças de dados
 
 ### Interface Responsiva
-- **5 Abas Organizadas**: Fluxo intuitivo de uso
-- **Mapas Interativos**: Visualização geográfica
-- **Feedback Visual**: Mensagens de sucesso/erro
-- **Edição Completa**: Modificar dados sem perder vínculos
+- **5 Abas Organizadas**: Encontrar Parceiros, Interesses, Grupos, Lista, Editar
+- **Mapas Interativos**: Visualização geográfica com Folium
+- **Seleção de Origem**: 3 métodos (busca, mapa, categoria)
+- **Edição Completa**: Modificar/excluir dados mantendo vínculos
+- **Sistema Local**: Tudo funciona em memória via Session State
 
 ## 💰 Custos AWS
 
